@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학과 종료 시간 기반 버스 추천</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .input-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .input-container input {
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+    <script>
+        // 버스 데이터
+        const busData = [
+            { id: 1, start_time: "08:45", interval: 110, last_time: "21:30" },
+            { id: 14, start_time: "09:22", interval: 28, last_time: "22:20" },
+            { id: 15, start_time: "08:15", interval: 135, last_time: "20:40" },
+            { id: 16, start_time: "09:15", interval: 255, last_time: "17:30" },
+            { id: 52, start_time: "09:52", interval: 13, last_time: "20:30" },
+        ];
+
+        // 시간 문자열을 Date 객체로 변환
+        function parseTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const now = new Date();
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+        }
+
+        // 순천대에서 순천역까지 걸리는 시간 (예: 30분)
+        function calculateArrivalTime(departureTime) {
+            // 순천대에서 순천역까지 걸리는 시간 (가정: 30분)
+            const travelTime = 30 * 60 * 1000; // 30분을 밀리초로 변환
+            return new Date(departureTime.getTime() + travelTime);
+        }
+
+        // 최적의 버스를 찾는 함수
+        function findBestBus(endTimeStr) {
+            const endTime = parseTime(endTimeStr);
+            let bestBus = null;
+            let minWaitTime = Number.MAX_SAFE_INTEGER;
+
+            for (const bus of busData) {
+                const startTime = parseTime(bus.start_time);
+                const lastTime = parseTime(bus.last_time);
+                const interval = bus.interval * 60 * 1000;
+
+                let nextBusTime;
+                if (endTime < startTime) {
+                    nextBusTime = startTime;
+                } else {
+                    const elapsed = Math.floor((endTime - startTime) / interval);
+                    nextBusTime = new Date(startTime.getTime() + (elapsed + 1) * interval);
+                }
+
+                if (nextBusTime > lastTime) continue;
+
+                const waitTime = nextBusTime - endTime;
+                if (waitTime < minWaitTime) {
+                    minWaitTime = waitTime;
+                    bestBus = {
+                        id: bus.id,
+                        departure: nextBusTime,
+                        arrival: calculateArrivalTime(nextBusTime) // 도착 시간 계산
+                    };
+                }
+            }
+
+            return bestBus;
+        }
+
+        // 결과를 테이블에 출력
+        function displayBusSchedule() {
+            const endTimeInput = document.getElementById("endTime").value;
+            const resultDiv = document.getElementById("result");
+
+            resultDiv.innerHTML = ""; // 기존 결과 초기화
+            const bestBus = findBestBus(endTimeInput);
+
+            if (bestBus) {
+                resultDiv.innerHTML = `
+                    <h3>추천 결과</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>학과 종료 시간</th>
+                                <th>추천 버스 ID</th>
+                                <th>출발 시간</th>
+                                <th>순천역 도착 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${endTimeInput}</td>
+                                <td>${bestBus.id}</td>
+                                <td>${bestBus.departure.toTimeString().slice(0, 5)}</td>
+                                <td>${bestBus.arrival.toTimeString().slice(0, 5)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                resultDiv.innerHTML = `<p>추천 가능한 버스가 없습니다.</p>`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>학과 종료 시간 기반 버스 추천</h1>
+    <div class="input-container">
+        <label for="endTime">학과 종료 시간: </label>
+        <input type="time" id="endTime" placeholder="HH:MM">
+        <button onclick="displayBusSchedule()">추천 보기</button>
+    </div>
+    <div id="result">
+        <p>결과가 여기에 표시됩니다.</p>
+    </div>
+</body>
+</html>
